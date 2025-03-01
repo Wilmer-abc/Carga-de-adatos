@@ -14,32 +14,22 @@ def cargar():
 
     try:
         df = pd.read_excel(archivo)
-        print("Columnas encontradas en el Excel:", df.columns.tolist()) 
-        
-        df.rename(columns={
-        'Ventas NA': 'Ventas_NA',
-        'Ventas EU': 'Ventas_EU',
-        'Ventas JP': 'Ventas_JP',
-        'Ventas Otros': 'Ventas_Otros',
-        'Ventas Global': 'Ventas_Global'
-        }, inplace=True)
+        columnas = df.columns.tolist()
+        print("Columnas encontradas:", columnas)
 
+        if 'Country Code' in columnas and 'Continent' in columnas:
+            df.rename(columns={'Country Code': 'Country_Code'}, inplace=True)
+            df.fillna({'Country_Code': 'Desconocido', 'Country': 'Desconocida', 'Continent': 'Desconocida'}, inplace=True)
+            data = df.to_dict(orient='records')
+            return jsonify({'success': True, 'tipo': 'paises', 'data': data})
 
-        df.fillna({
-            'Nombre': 'Desconocido',
-            'Plataforma': 'Desconocida',
-            'Año': 0,
-            'Genero': 'Desconocido',
-            'Editorial': 'Desconocido',
-            'Ventas_NA': 0,
-            'Ventas_EU': 0,
-            'Ventas_JP': 0,
-            'Ventas_Otros': 0,
-            'Ventas_Global': 0
-        }, inplace=True)
+        elif 'Country' in columnas and 'Population' in columnas:
+            df.fillna({'Country': 'Desconocida', 'Population': 'Desconocida'}, inplace=True)
+            data = df.to_dict(orient='records')
+            return jsonify({'success': True, 'tipo': 'poblacion', 'data': data})
 
-        data = df.to_dict(orient='records')
-        return jsonify({'success': True, 'data': data})
+        else:
+            return jsonify({'error': 'Formato de archivo no reconocido'})
 
     except Exception as e:
         return jsonify({'error': str(e)})

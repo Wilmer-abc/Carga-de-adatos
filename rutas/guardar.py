@@ -6,23 +6,38 @@ guardar_bd = Blueprint('guardar_bd', __name__)
 @guardar_bd.route('/guardar', methods=['POST'])
 def guardar():
     try:
-        datos = request.json['data']
+        datos = request.json
+        paises = datos.get('paises', [])
+        poblacion = datos.get('poblacion', [])
+
+        if not paises and not poblacion:
+            return jsonify({'error': 'No se recibieron datos'}), 400
+
         conexion = conectar_bd()
         cursor = conexion.cursor()
 
-        sql = """
-            INSERT INTO VideoJuego1 (
-                Nombre, Plataforma, Año, Genero, Editorial, 
-                Ventas_NA, Ventas_EU, Ventas_JP, Ventas_Otros, Ventas_Global
-            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-        """
+        # Guardar datos en la tabla Countries
+        if paises:
+            sql_paises = """
+                INSERT INTO Countries (Country_Code, Country, Continent)
+                VALUES (%s, %s, %s)
+            """
+            for row in paises:
+                valores = (row.get('Country_Code', 'Desconocido'),
+                           row.get('Country', 'Desconocida'),
+                           row.get('Continent', 'Desconocida'))
+                cursor.execute(sql_paises, valores)
 
-        for row in datos:
-            valores = (
-                row['Nombre'], row['Plataforma'], row['Año'], row['Genero'], row['Editorial'], 
-                row['Ventas_NA'], row['Ventas_EU'], row['Ventas_JP'], row['Ventas_Otros'], row['Ventas_Global']
-            )
-            cursor.execute(sql, valores)
+        # Guardar datos en la tabla Population
+        if poblacion:
+            sql_poblacion = """
+                INSERT INTO Population (Country, Population)
+                VALUES (%s, %s)
+            """
+            for row in poblacion:
+                valores = (row.get('Country', 'Desconocida'),
+                           row.get('Population', '0'))
+                cursor.execute(sql_poblacion, valores)
 
         conexion.commit()
         cursor.close()

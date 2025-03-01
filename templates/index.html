@@ -34,111 +34,137 @@
     <button onclick="guardarBD()">Guardar en Base de Datos</button>
 
     <script>
-        let datos = [];
+        let datosPaises = [];
+let datosPoblacion = [];
 
-        function cargarArchivo() {
-            let archivo = $("#archivo")[0].files[0];
-            if (!archivo) {
-                alert("Selecciona un archivo primero");
-                return;
+function cargarArchivo() {
+    let archivo = $("#archivo")[0].files[0];
+    if (!archivo) {
+        alert("Selecciona un archivo primero");
+        return;
+    }
+
+    let formData = new FormData();
+    formData.append("archivo", archivo);
+
+    $("#progressBarContainer").show();
+    $("#progressBar").css("width", "0%");
+
+    let progress = 0;
+    let interval = setInterval(() => {
+        if (progress >= 100) {
+            clearInterval(interval);
+        } else {
+            progress += 10;
+            $("#progressBar").css("width", progress + "%");
+        }
+    }, 300);
+
+    $.ajax({
+        url: "/cargar",
+        type: "POST",
+        data: formData,
+        contentType: false,
+        processData: false,
+        success: function(response) {
+            clearInterval(interval);
+            $("#progressBar").css("width", "100%");
+            setTimeout(() => $("#progressBarContainer").hide(), 500);
+
+            if (response.success) {
+                if (response.tipo === "paises") {
+                    datosPaises = response.data;
+                    mostrarTablaPaises(datosPaises);
+                } else if (response.tipo === "poblacion") {
+                    datosPoblacion = response.data;
+                    mostrarTablaPoblacion(datosPoblacion);
+                }
+            } else {
+                alert(response.error);
             }
-
-            let formData = new FormData();
-            formData.append("archivo", archivo);
-
-            // Mostrar la barra de carga
-            $("#progressBarContainer").show();
-            $("#progressBar").css("width", "0%");
-
-            let progress = 0;
-            let interval = setInterval(() => {
-                if (progress >= 100) {
-                    clearInterval(interval);
-                } else {
-                    progress += 10;
-                    $("#progressBar").css("width", progress + "%");
-                }
-            }, 300);
-
-            $.ajax({
-                url: "/cargar",
-                type: "POST",
-                data: formData,
-                contentType: false,
-                processData: false,
-                success: function(response) {
-                    clearInterval(interval);
-                    $("#progressBar").css("width", "100%");
-                    setTimeout(() => $("#progressBarContainer").hide(), 500);
-
-                    if (response.success) {
-                        datos = response.data;
-                        mostrarTabla(datos);
-                    } else {
-                        alert(response.error);
-                    }
-                }
-            });
         }
+    });
+}
 
-        function mostrarTabla(data) {
-            let thead = `
-                <tr>
-                    <th>Nombre</th>
-                    <th>Plataforma</th>
-                    <th>Año</th>
-                    <th>Género</th>
-                    <th>Editorial</th>
-                    <th>Ventas NA</th>
-                    <th>Ventas EU</th>
-                    <th>Ventas JP</th>
-                    <th>Ventas Otros</th>
-                    <th>Ventas Global</th>
-                </tr>
-            `;
+function mostrarTablaPaises(data) {
+    let thead = `
+        <tr>
+            <th>Country_Code</th>
+            <th>Country</th>
+            <th>Continent</th>
+        </tr>
+    `;
+    let tbody = "";
+    data.forEach(row => {
+        tbody += `
+            <tr>
+                <td>${row.Country_Code}</td>
+                <td>${row.Country}</td>
+                <td>${row.Continent}</td>
+            </tr>
+        `;
+    });
 
-            let tbody = "";
-            data.forEach(row => {
-                tbody += `
-                    <tr>
-                        <td>${row.Nombre}</td>
-                        <td>${row.Plataforma}</td>
-                        <td>${row.Año}</td>
-                        <td>${row.Genero}</td>
-                        <td>${row.Editorial}</td>
-                        <td>${row.Ventas_NA}</td>
-                        <td>${row.Ventas_EU}</td>
-                        <td>${row.Ventas_JP}</td>
-                        <td>${row.Ventas_Otros}</td>
-                        <td>${row.Ventas_Global}</td>
-                    </tr>
-                `;
-            });
+    $("#tabla thead").html(thead);
+    $("#tabla tbody").html(tbody);
+}
 
-            $("#tabla thead").html(thead);
-            $("#tabla tbody").html(tbody);
-        }
+function mostrarTablaPoblacion(data) {
+    let thead = `
+        <tr>
+            <th>Country</th>
+            <th>Population</th>
+        </tr>
+    `;
+    let tbody = "";
+    data.forEach(row => {
+        tbody += `
+            <tr>
+                <td>${row.Country}</td>
+                <td>${row.Population}</td>
+            </tr>
+        `;
+    });
 
-        function guardarBD() {
-            if (datos.length === 0) {
-                alert("No hay datos para guardar");
-                return;
+    $("#tabla thead").html(thead);
+    $("#tabla tbody").html(tbody);
+}
+
+
+        
+        
+
+function guardarBD() {
+    if (datosPaises.length === 0 && datosPoblacion.length === 0) {
+        alert("No hay datos para guardar");
+        return;
+    }
+
+    let datosAEnviar = {
+        paises: datosPaises,
+        poblacion: datosPoblacion
+    };
+
+    $.ajax({
+        url: "/guardar",
+        type: "POST",
+        contentType: "application/json",
+        data: JSON.stringify(datosAEnviar),
+        success: function(response) {
+            if (response.success) {
+                alert(response.message);
+            } else {
+                alert("Error en el servidor: " + response.error);
+                console.error("Error en la BD:", response.error);
             }
-
-            $.ajax({
-                url: "/guardar",
-                type: "POST",
-                contentType: "application/json",
-                data: JSON.stringify({ data: datos }),
-                success: function(response) {
-                    if (response.success) {
-                        alert(response.message);
-                    } else {
-                        alert(response.error);
-                    }
-                }
-            });
+        },
+        error: function(xhr, status, error) {
+            alert("Error AJAX: " + error);
+            console.error("Detalles del error:", xhr.responseText);
         }
+    });
+}
+
 
         function mostrarNombreArchivo() {
             let archivo = document.getElementById("archivo").files[0];

@@ -5,6 +5,6 @@ def conectar_bd():
     host="127.0.0.1",
     user="root",
     password="Qwerty123",
-    database="VentasVideoJuegos",
+    database="PrimerParcial2",
     port=3307 
 )
