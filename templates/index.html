@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cargar Archivo</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+</head>
+<body>
+
+    <h2>Cargar Archivo Excel</h2>
+
+    <!-- Área de carga -->
+    <div class="file-upload" onclick="document.getElementById('archivo').click()">
+        <label for="archivo">Seleccionar Archivo</label>
+        <input type="file" id="archivo" accept=".xlsx,.xls" onchange="mostrarNombreArchivo()">
+        <span id="file-name">Ningún archivo seleccionado</span>
+    </div>
+
+    <!-- Barra de carga -->
+    <div id="progressBarContainer" class="progress-bar-container">
+        <div id="progressBar" class="progress-bar"></div>
+    </div>
+
+    <button onclick="cargarArchivo()">Cargar</button>
+
+    <h3>Vista previa:</h3>
+    <table id="tabla">
+        <thead></thead>
+        <tbody></tbody>
+    </table>
+
+    <button onclick="guardarBD()">Guardar en Base de Datos</button>
+
+    <script>
+        let datos = [];
+
+        function cargarArchivo() {
+            let archivo = $("#archivo")[0].files[0];
+            if (!archivo) {
+                alert("Selecciona un archivo primero");
+                return;
+            }
+
+            let formData = new FormData();
+            formData.append("archivo", archivo);
+
+            // Mostrar la barra de carga
+            $("#progressBarContainer").show();
+            $("#progressBar").css("width", "0%");
+
+            let progress = 0;
+            let interval = setInterval(() => {
+                if (progress >= 100) {
+                    clearInterval(interval);
+                } else {
+                    progress += 10;
+                    $("#progressBar").css("width", progress + "%");
+                }
+            }, 300);
+
+            $.ajax({
+                url: "/cargar",
+                type: "POST",
+                data: formData,
+                contentType: false,
+                processData: false,
+                success: function(response) {
+                    clearInterval(interval);
+                    $("#progressBar").css("width", "100%");
+                    setTimeout(() => $("#progressBarContainer").hide(), 500);
+
+                    if (response.success) {
+                        datos = response.data;
+                        mostrarTabla(datos);
+                    } else {
+                        alert(response.error);
+                    }
+                }
+            });
+        }
+
+        function mostrarTabla(data) {
+            let thead = `
+                <tr>
+                    <th>Nombre</th>
+                    <th>Plataforma</th>
+                    <th>Año</th>
+                    <th>Género</th>
+                    <th>Editorial</th>
+                    <th>Ventas NA</th>
+                    <th>Ventas EU</th>
+                    <th>Ventas JP</th>
+                    <th>Ventas Otros</th>
+                    <th>Ventas Global</th>
+                </tr>
+            `;
+
+            let tbody = "";
+            data.forEach(row => {
+                tbody += `
+                    <tr>
+                        <td>${row.Nombre}</td>
+                        <td>${row.Plataforma}</td>
+                        <td>${row.Año}</td>
+                        <td>${row.Genero}</td>
+                        <td>${row.Editorial}</td>
+                        <td>${row.Ventas_NA}</td>
+                        <td>${row.Ventas_EU}</td>
+                        <td>${row.Ventas_JP}</td>
+                        <td>${row.Ventas_Otros}</td>
+                        <td>${row.Ventas_Global}</td>
+                    </tr>
+                `;
+            });
+
+            $("#tabla thead").html(thead);
+            $("#tabla tbody").html(tbody);
+        }
+
+        function guardarBD() {
+            if (datos.length === 0) {
+                alert("No hay datos para guardar");
+                return;
+            }
+
+            $.ajax({
+                url: "/guardar",
+                type: "POST",
+                contentType: "application/json",
+                data: JSON.stringify({ data: datos }),
+                success: function(response) {
+                    if (response.success) {
+                        alert(response.message);
+                    } else {
+                        alert(response.error);
+                    }
+                }
+            });
+        }
+
+        function mostrarNombreArchivo() {
+            let archivo = document.getElementById("archivo").files[0];
+            let fileNameSpan = document.getElementById("file-name");
+
+            if (archivo) {
+                fileNameSpan.textContent = archivo.name; // Muestra el nombre del archivo seleccionado
+                fileNameSpan.style.color = "#007bff"; // Cambia el color del texto para resaltar
+            } else {
+                fileNameSpan.textContent = "Ningún archivo seleccionado"; // Mensaje por defecto
+                fileNameSpan.style.color = "#555"; // Color por defecto
+            }
+        }
+    </script>
+</body>
+</html>
